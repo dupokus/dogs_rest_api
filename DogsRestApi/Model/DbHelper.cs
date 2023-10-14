@@ -27,6 +27,19 @@ namespace DogsRestApi.Model
             }));
             return response; 
         }
+        public DogModel GetDogById(int Id)
+        {
+            DogModel response = new DogModel();
+            var row = _context.Dogs.Where(d=>d.Id.Equals(Id)).FirstOrDefault();
+            return new DogModel()
+            {
+                Id = row.Id,
+                Name = row.Name,
+                Color = row.Color,
+                TailLength = row.TailLength,
+                Weight = row.Weight,
+            };
+        }
         /// <summary>
         /// POST/PATCH/PUT
         /// </summary>

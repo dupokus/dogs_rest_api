@@ -56,16 +56,16 @@ namespace DogsRestApi.Model
                     dbTable.TailLength = dogModel.TailLength;
                     dbTable.Weight = dogModel.Weight;
                 }
-                else
-                {
-                    dbTable.Name = dogModel.Name;
-                    dbTable.Color = dogModel.Color;
-                    dbTable.TailLength = dogModel.TailLength;
-                    dbTable.Weight = dogModel.Weight;
-                    _context.Dogs.Add(dbTable);
-                }
-                _context.SaveChanges();
             }
+            else
+            {
+                dbTable.Name = dogModel.Name;
+                dbTable.Color = dogModel.Color;
+                dbTable.TailLength = dogModel.TailLength;
+                dbTable.Weight = dogModel.Weight;
+                _context.Dogs.Add(dbTable);
+            }
+            _context.SaveChanges();
         }
         /// <summary>
         /// DELETE

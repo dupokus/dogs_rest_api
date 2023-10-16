@@ -38,6 +38,14 @@ namespace DogsRestApi.Controllers
                 return BadRequest(ResponseHandler.GetExceptionResponse(ex));
             }
         }
+        // GET: api/<DogController>/ping
+        [HttpGet]
+        [Route("api/[controller]/ping")]
+        public string GetPing()
+        {
+
+            return "Dogshouseservice.Version1.0.1";
+        }
 
         // GET api/<DogController>/5
         [HttpGet]

@@ -1,125 +1,78 @@
 ﻿using DogsRestApi.Data;
 using DogsRestApi.Model;
 using Microsoft.AspNetCore.Mvc;
+using Carter;
 using static System.Runtime.InteropServices.JavaScript.JSType;
-
-// For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+using Microsoft.AspNetCore.Hosting.Server;
+using MediatR;
 
 namespace DogsRestApi.Controllers
 {
     
     [ApiController]
-    public class DogController : ControllerBase
+    public class DogController : ControllerBase, ICarterModule
     {
-        private readonly DbHelper _db;
-        public DogController(DogDbContext dogDbContext)
+        public void AddRoutes(IEndpointRouteBuilder app)
         {
-            _db = new DbHelper(dogDbContext);
-        }
-        // GET: api/<DogController>
-        [HttpGet]
-        [Route("api/[controller]/GetDogs")]
-        public IActionResult Get()
-        {
-            ResponseType type = ResponseType.Success;
-            try
+            app.MapPost("dogs", async (CreateDogCommand command, ISender sender) =>
             {
-                IEnumerable<DogModel> data = _db.GetDogs();
-                
-                if (!data.Any()) 
+                await sender.Send(command);
+                return Results.Ok();
+            });
+
+            app.MapGet("dogs", async (
+                string? searchTerm,
+                string? sortColumn,
+                string? sortOrder,
+            int page,
+                int pageSize,
+                ISender sender) =>
+            {
+                var query = new GetDogsQuery(searchTerm, sortColumn, sortOrder, page, pageSize);
+
+                var dogs = await sender.Send(query);
+
+                return Results.Ok(dogs);
+            });
+
+            app.MapGet("dogs/{id:guid}", async (Guid id, ISender sender) =>
+            {
+                try
                 {
-                    type = ResponseType.NotFound;
+                    return Results.Ok(await sender.Send(new GetDogQuery(new DogId(id))));
                 }
-                return Ok(ResponseHandler.GetAppResponse(type, data));
-            }
-            catch (Exception ex)
-            {
-                
-                return BadRequest(ResponseHandler.GetExceptionResponse(ex));
-            }
-        }
-        // GET: api/<DogController>/ping
-        [HttpGet]
-        [Route("api/[controller]/ping")]
-        public string GetPing()
-        {
-
-            return "Dogshouseservice.Version1.0.1";
-        }
-
-        // GET api/<DogController>/5
-        [HttpGet]
-        [Route("api/[controller]/GetDogById/{Id}")]
-        public IActionResult Get(int id)
-        {
-            ResponseType type = ResponseType.Success;
-            try
-            {
-                DogModel data = _db.GetDogById(id);
-
-                if (data == null)
+                catch (DogNotFoundException e)
                 {
-                    type = ResponseType.NotFound;
+                    return Results.NotFound(e.Message);
                 }
-                return Ok(ResponseHandler.GetAppResponse(type, data));
-            }
-            catch (Exception ex)
-            {
-                
-                return BadRequest(ResponseHandler.GetExceptionResponse(ex));
-            }
-        }
-        
-        // POST api/<DogController>
-        [HttpPost]
-        [Route("api/[controller]/SaveDog")]
-        public IActionResult Post([FromBody] DogModel model)
-        {
-            try
-            {
-                ResponseType type = ResponseType.Success;
-                _db.SaveDog(model);
-                return Ok(ResponseHandler.GetAppResponse(type, model));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ResponseHandler.GetExceptionResponse(ex));
-            }
-        }
+            });
 
-        // PUT api/<DogController>/5
-        [HttpPut]
-        [Route("api/[controller]/UpdateDog")]
-        public IActionResult Put([FromBody] DogModel model)
-        {
-            try
+            app.MapPut("dogs/{id:guid}", async (Guid id, [FromBody] UpdateDogRequest request, ISender sender) =>
             {
-                ResponseType type = ResponseType.Success;
-                _db.SaveDog(model);
-                return Ok(ResponseHandler.GetAppResponse(type, model));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ResponseHandler.GetExceptionResponse(ex));
-            }
-        }
+                var command = new UpdateDogCommand(
+                    new DogId(id),
+                    request.Name,
+                    request.Color,
+                    request.TailLength,
+                    request.Weight);
 
-        // DELETE api/<DogController>/5
-        [HttpDelete]
-        [Route("api/[controller]/DeleteDog/{Id}")]
+                await sender.Send(command);
 
-        public IActionResult Delete(int Id)
-        {
-            try
+                return Results.NoContent();
+            });
+            app.MapDelete("dogs/{id:guid}", async (Guid id, ISender sender) =>
             {
-                ResponseType type = ResponseType.Success;
-                _db.DeleteDog(Id);
-                return Ok(ResponseHandler.GetAppResponse(type, "Delete successful."));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ResponseHandler.GetExceptionResponse(ex));
-            }
+                try
+                {
+                    await sender.Send(new DeleteDogCommand(new DogId(id)));
+
+                    return Results.NoContent();
+                }
+                catch (DogNotFoundException e)
+                {
+                    return Results.NotFound(e.Message);
+                }
+            });
         }
     }
 }

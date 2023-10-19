@@ -1,84 +1,111 @@
 ﻿using DogsRestApi.Data;
+using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Linq.Expressions;
+using System.Threading.Tasks;
 
 namespace DogsRestApi.Model
 {
     public class DbHelper
     {
-        private DogDbContext _context;
-        public DbHelper(DogDbContext context) 
+        private readonly DogDbContext _context;
+
+        public DbHelper(DogDbContext context)
         {
             _context = context;
         }
-        /// <summary>
-        /// GET
-        /// </summary>
-        /// <returns></returns>
-        public List<DogModel> GetDogs() 
+
+        public async Task<List<DogModel>> GetDogsAsync(string? searchTerm, string? sortColumn, string? sortOrder, int page, int pageSize)
         {
-            List<DogModel> response = new List<DogModel>();
-            var datalist = _context.Dogs.ToList();
-            datalist.ForEach(row => response.Add(new DogModel()
+            IQueryable<Dog> dogsQuery = _context.Dogs.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(searchTerm))
             {
-                Id = row.Id,
-                Name = row.Name,
-                Color = row.Color,
-                TailLength = row.TailLength,
-                Weight = row.Weight,
-            }));
-            return response; 
+                dogsQuery = dogsQuery.Where(d =>
+                    d.Name.Contains(searchTerm));
+            }
+
+            if (sortOrder?.ToLower() == "desc")
+            {
+                dogsQuery = dogsQuery.OrderByDescending(GetSortProperty(sortColumn));
+            }
+            else
+            {
+                dogsQuery = dogsQuery.OrderBy(GetSortProperty(sortColumn));
+            }
+
+            var dogs = await dogsQuery
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(d => new DogModel(
+                    d.Id,
+                    d.Name,
+                    d.Color,
+                    d.TailLength,
+                    d.Weight))
+                .ToListAsync();
+
+            return dogs;
         }
-        public DogModel GetDogById(int Id)
+
+        public async Task<DogModel> GetDogByIdAsync(int Id)
         {
-            DogModel response = new DogModel();
-            var row = _context.Dogs.Where(d=>d.Id.Equals(Id)).FirstOrDefault();
-            return new DogModel()
+            var row = await _context.Dogs.FirstOrDefaultAsync(d => d.Id == Id);
+            if (row != null)
             {
-                Id = row.Id,
-                Name = row.Name,
-                Color = row.Color,
-                TailLength = row.TailLength,
-                Weight = row.Weight,
+                return new DogModel(row.Id, row.Name, row.Color, row.TailLength, row.Weight);
+            }
+
+            return null;
+        }
+
+        public async Task SaveDogAsync(DogModel dogModel)
+        {
+            Dog dbTable = new Dog
+            {
+                Name = dogModel.Name,
+                Color = dogModel.Color,
+                TailLength = dogModel.TailLength,
+                Weight = dogModel.Weight
             };
-        }
-        /// <summary>
-        /// POST/PATCH/PUT
-        /// </summary>
-        public void SaveDog(DogModel dogModel)  
-        {
-            Dog dbTable = new Dog();
-            if (dogModel.Id > 0) 
+
+            if (dogModel.Id > 0)
             {
-                dbTable = _context.Dogs.Where(d => d.Id.Equals(dogModel.Id)).FirstOrDefault();
-                if (dbTable != null) 
+                var existingDog = await _context.Dogs.FirstOrDefaultAsync(d => d.Id == dogModel.Id);
+                if (existingDog != null)
                 {
-                    dbTable.Name = dogModel.Name;
-                    dbTable.Color = dogModel.Color; 
-                    dbTable.TailLength = dogModel.TailLength;
-                    dbTable.Weight = dogModel.Weight;
+                    existingDog.Name = dogModel.Name;
+                    existingDog.Color = dogModel.Color;
+                    existingDog.TailLength = dogModel.TailLength;
+                    existingDog.Weight = dogModel.Weight;
                 }
             }
             else
             {
-                dbTable.Name = dogModel.Name;
-                dbTable.Color = dogModel.Color;
-                dbTable.TailLength = dogModel.TailLength;
-                dbTable.Weight = dogModel.Weight;
                 _context.Dogs.Add(dbTable);
             }
-            _context.SaveChanges();
+
+            await _context.SaveChangesAsync();
         }
-        /// <summary>
-        /// DELETE
-        /// </summary>
-        /// <param name="Id"></param>
-        public void DeleteDog(int Id)
+
+        public async Task DeleteDogAsync(int Id)
         {
-            var dog = _context.Dogs.Where(d => d.Id.Equals(Id)).FirstOrDefault();
+            var dog = await _context.Dogs.FirstOrDefaultAsync(d => d.Id == Id);
             if (dog != null)
             {
                 _context.Dogs.Remove(dog);
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
             }
         }
+
+        private static Expression<Func<Dog, object>> GetSortProperty(string sortColumn) =>
+            sortColumn?.ToLower() switch
+            {
+                "name" => dog => dog.Name,
+                "weight" => dog => dog.Weight,
+                _ => dog => dog.Id
+            };
     }
 }

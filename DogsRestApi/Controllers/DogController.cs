@@ -1,32 +1,33 @@
 ﻿using DogsRestApi.Data;
 using DogsRestApi.Model;
 using Microsoft.AspNetCore.Mvc;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-
-// For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace DogsRestApi.Controllers
 {
-    
     [ApiController]
     public class DogController : ControllerBase
     {
         private readonly DbHelper _db;
+
         public DogController(DogDbContext dogDbContext)
         {
             _db = new DbHelper(dogDbContext);
         }
-        // GET: api/<DogController>
+
         [HttpGet]
         [Route("api/[controller]/GetDogs")]
-        public IActionResult Get()
+        public async Task<IActionResult> GetDogs(string? searchTerm, string? sortColumn, string? sortOrder, int page, int pageSize)
         {
             ResponseType type = ResponseType.Success;
             try
             {
-                IEnumerable<DogModel> data = _db.GetDogs();
-                
-                if (!data.Any()) 
+                IEnumerable<DogModel> data = await _db.GetDogsAsync(searchTerm, sortColumn, sortOrder, page, pageSize);
+
+                if (!data.Any())
                 {
                     type = ResponseType.NotFound;
                 }
@@ -34,28 +35,25 @@ namespace DogsRestApi.Controllers
             }
             catch (Exception ex)
             {
-                
                 return BadRequest(ResponseHandler.GetExceptionResponse(ex));
             }
         }
-        // GET: api/<DogController>/ping
+
         [HttpGet]
         [Route("api/[controller]/ping")]
         public string GetPing()
         {
-
             return "Dogshouseservice.Version1.0.1";
         }
 
-        // GET api/<DogController>/5
         [HttpGet]
         [Route("api/[controller]/GetDogById/{Id}")]
-        public IActionResult Get(int id)
+        public async Task<IActionResult> GetDogById(int id)
         {
             ResponseType type = ResponseType.Success;
             try
             {
-                DogModel data = _db.GetDogById(id);
+                DogModel data = await _db.GetDogByIdAsync(id);
 
                 if (data == null)
                 {
@@ -65,20 +63,18 @@ namespace DogsRestApi.Controllers
             }
             catch (Exception ex)
             {
-                
                 return BadRequest(ResponseHandler.GetExceptionResponse(ex));
             }
         }
-        
-        // POST api/<DogController>
+
         [HttpPost]
         [Route("api/[controller]/SaveDog")]
-        public IActionResult Post([FromBody] DogModel model)
+        public async Task<IActionResult> Post([FromBody] DogModel model)
         {
             try
             {
                 ResponseType type = ResponseType.Success;
-                _db.SaveDog(model);
+                await _db.SaveDogAsync(model);
                 return Ok(ResponseHandler.GetAppResponse(type, model));
             }
             catch (Exception ex)
@@ -87,15 +83,14 @@ namespace DogsRestApi.Controllers
             }
         }
 
-        // PUT api/<DogController>/5
         [HttpPut]
         [Route("api/[controller]/UpdateDog")]
-        public IActionResult Put([FromBody] DogModel model)
+        public async Task<IActionResult> Put([FromBody] DogModel model)
         {
             try
             {
                 ResponseType type = ResponseType.Success;
-                _db.SaveDog(model);
+                await _db.SaveDogAsync(model);
                 return Ok(ResponseHandler.GetAppResponse(type, model));
             }
             catch (Exception ex)
@@ -104,16 +99,14 @@ namespace DogsRestApi.Controllers
             }
         }
 
-        // DELETE api/<DogController>/5
         [HttpDelete]
         [Route("api/[controller]/DeleteDog/{Id}")]
-
-        public IActionResult Delete(int Id)
+        public async Task<IActionResult> Delete(int Id)
         {
             try
             {
                 ResponseType type = ResponseType.Success;
-                _db.DeleteDog(Id);
+                await _db.DeleteDogAsync(Id);
                 return Ok(ResponseHandler.GetAppResponse(type, "Delete successful."));
             }
             catch (Exception ex)

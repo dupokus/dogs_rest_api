@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using DogsRestApi.Data;
+using AspNetCoreRateLimit;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,6 +11,15 @@ builder.Services.AddDbContext<DogDbContext>(
         o => o.UseNpgsql(builder.Configuration.GetConnectionString("DogApiDb"))
     );
 builder.Services.AddControllers();
+
+builder.Services.AddMemoryCache();
+
+builder.Services.Configure<IpRateLimitOptions>(builder.Configuration.GetSection("IpRateLimiting"));
+builder.Services.AddSingleton<IIpPolicyStore, MemoryCacheIpPolicyStore>();
+builder.Services.AddSingleton<IRateLimitCounterStore, MemoryCacheRateLimitCounterStore>();
+builder.Services.AddSingleton<IProcessingStrategy, AsyncKeyLockProcessingStrategy>();
+builder.Services.AddSingleton<IRateLimitConfiguration, RateLimitConfiguration>();
+
 
 var app = builder.Build();
 
@@ -27,7 +37,7 @@ app.UseStaticFiles();
 app.UseRouting();
 
 app.UseAuthorization();
-
+app.UseIpRateLimiting();
 app.MapRazorPages();
 
 app.MapControllers();

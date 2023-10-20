@@ -17,6 +17,20 @@ namespace DogsRestApi.Model
             _context = context;
         }
 
+        public async Task<bool> DoesDogWithNameExistAsync(string name)
+        {
+            var dogs = await _context.Dogs.ToListAsync(); // Retrieve all dogs from the database
+            return dogs.Any(d => d.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+        }
+
+        public bool IsValidTailLength(double tailLength)
+        {
+            return tailLength >= 0;
+        }
+        public bool IsValidWeight(double weight)
+        {
+            return weight >= 0;
+        }
         public async Task<List<DogModel>> GetDogsAsync(string? searchTerm, string? sortColumn, string? sortOrder, int page, int pageSize)
         {
             IQueryable<Dog> dogsQuery = _context.Dogs.AsQueryable();

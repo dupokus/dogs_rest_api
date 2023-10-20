@@ -71,8 +71,27 @@ namespace DogsRestApi.Controllers
         [Route("api/[controller]/SaveDog")]
         public async Task<IActionResult> Post([FromBody] DogModel model)
         {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest("Invalid JSON format.");
+            }
             try
             {
+                bool doesDogExist = await _db.DoesDogWithNameExistAsync(model.Name);
+                if (doesDogExist)
+                {
+                    return BadRequest("Dog with the same name already exists.");
+                }
+
+                if (!_db.IsValidTailLength(model.TailLength))
+                {
+                    return BadRequest("Tail Length should be a non-negative number.");
+                }
+                if (!_db.IsValidWeight(model.Weight))
+                {
+                    return BadRequest("Weight should be a non-negative number.");
+                }
+
                 ResponseType type = ResponseType.Success;
                 await _db.SaveDogAsync(model);
                 return Ok(ResponseHandler.GetAppResponse(type, model));
